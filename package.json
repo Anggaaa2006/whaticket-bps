@@ -1,0 +1,13 @@
+{
+  "name": "whaticket-bps",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "cd backend && npm install --production && echo 'Build complete'",
+    "start": "node backend/dist/server.js"
+  },
+  "dependencies": {
+    "typescript": "~5.4.5"
+  }
+}
+

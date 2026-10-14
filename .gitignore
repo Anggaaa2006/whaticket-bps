@@ -4,3 +4,10 @@ ssl/
 .wwebjs_auth
 .wwebjs_cache
 .idea
+
+.history/
+*.log
+backup_whaticket.sql
+download_frontend.py
+sync_all_assets.py
+make_zip.ps1

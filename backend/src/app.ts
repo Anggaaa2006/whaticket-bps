@@ -26,7 +26,17 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(Sentry.Handlers.requestHandler());
 app.use("/public", express.static(uploadConfig.directory));
+import path from "path";
 app.use(routes);
+
+const frontendPath = path.resolve(__dirname, "..", "..", "frontend", "build");
+app.use(express.static(frontendPath));
+app.get("*", (req: Request, res: Response) => {
+  if (!req.path.startsWith("/api") && !req.path.startsWith("/public")) {
+    return res.sendFile(path.join(frontendPath, "index.html"));
+  }
+  return res.status(404).json({ error: "Not found" });
+});
 
 app.use(Sentry.Handlers.errorHandler());
 

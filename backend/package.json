@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "echo 'Backend already compiled to dist'",
     "watch": "tsc -w",
-    "start": "nodemon dist/server.js",
+    "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only --ignore node_modules src/server.ts",
     "pretest": "NODE_ENV=test sequelize db:migrate && NODE_ENV=test sequelize db:seed:all",
     "test": "NODE_ENV=test jest",
@@ -90,7 +90,7 @@
     "supertest": "^5.0.0",
     "ts-jest": "^26.4.1",
     "ts-node-dev": "^1.0.0-pre.63",
-    "typescript": "~5.4"
+    "typescript": "^5.4.5"
   },
   "optionalDependencies": {
     "@zapo-js/media-utils": "^1.0.0",
