@@ -4,6 +4,7 @@ import Ticket from "../../models/Ticket";
 import { whatsappProvider, ProviderMessage } from "../../providers/WhatsApp";
 
 import formatBody from "../../helpers/Mustache";
+import { addPendingSignature } from "../../helpers/SignatureCache";
 
 interface Request {
   media: Express.Multer.File;
@@ -23,8 +24,17 @@ const SendWhatsAppMedia = async ({
 
     const chatId = `${ticket.contact.number}@${ticket.isGroup ? "g" : "c"}.us`;
 
-    const hasBody = body
-      ? formatBody(body as string, ticket.contact)
+    const match = body ? body.match(/^(\*.*?\*:\n)([\s\S]*)$/) : null;
+    const signature = match ? match[1] : "";
+    const cleanBody = match ? match[2] : body;
+
+    if (signature) {
+      const key = `${chatId}:${(cleanBody || media.filename).trim()}`;
+      addPendingSignature(key, signature);
+    }
+
+    const hasBody = cleanBody
+      ? formatBody(cleanBody as string, ticket.contact)
       : undefined;
 
     const mediaInput = {
@@ -48,7 +58,11 @@ const SendWhatsAppMedia = async ({
       mediaOptions
     );
 
-    await ticket.update({ lastMessage: body || media.filename });
+    if (signature && sentMessage?.id) {
+      addPendingSignature(sentMessage.id, signature);
+    }
+
+    await ticket.update({ lastMessage: cleanBody || media.filename });
 
     fs.unlinkSync(media.path);
 

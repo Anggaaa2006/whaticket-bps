@@ -21,6 +21,7 @@ import CreateContactService from "../services/ContactServices/CreateContactServi
 
 import { whatsappProvider } from "../providers/WhatsApp/whatsappProvider";
 import { MessageType, MessageAck } from "../providers/WhatsApp/types";
+import { consumePendingSignature } from "../helpers/SignatureCache";
 
 const writeFileAsync = promisify(writeFile);
 
@@ -214,6 +215,33 @@ const handleQueueLogic = async (
   }
 };
 
+const forwardToWebhook = async (
+  payload: Record<string, unknown>
+): Promise<void> => {
+  const webhookUrl = process.env.WEBHOOK_URL;
+  if (!webhookUrl) return;
+
+  try {
+    const fetchFn = (globalThis as any).fetch;
+    if (typeof fetchFn === "function") {
+      const reqHeaders: Record<string, string> = {
+        "Content-Type": "application/json"
+      };
+      if (process.env.WEBHOOK_TOKEN) {
+        reqHeaders.Authorization = `Bearer ${process.env.WEBHOOK_TOKEN}`;
+        reqHeaders["X-Webhook-Token"] = process.env.WEBHOOK_TOKEN;
+      }
+      await fetchFn(webhookUrl, {
+        method: "POST",
+        headers: reqHeaders,
+        body: JSON.stringify(payload)
+      });
+    }
+  } catch (err) {
+    logger.error({ info: "Error forwarding message to WEBHOOK_URL", err });
+  }
+};
+
 export const handleMessage = async (
   messagePayload: MessagePayload,
   contactPayload: ContactPayload,
@@ -289,7 +317,40 @@ export const handleMessage = async (
 
     await ticket.update({ lastMessage: lastMessageText });
 
+    if (processedMessage.fromMe) {
+      const remoteJid = `${contactPayload.number}@${contactPayload.isGroup ? "g" : "c"}.us`;
+      const cleanKey = `${remoteJid}:${(messageData.body || "").trim()}`;
+      const sig = consumePendingSignature([processedMessage.id, cleanKey]);
+      if (sig && !messageData.body.startsWith(sig)) {
+        messageData.body = `${sig}${messageData.body}`;
+      }
+    }
+
     await CreateMessageService({ messageData });
+
+    if (!processedMessage.fromMe && process.env.WEBHOOK_URL) {
+      forwardToWebhook({
+        event: "message",
+        token: process.env.WEBHOOK_TOKEN,
+        whatsappId: contextPayload.whatsappId,
+        ticketId: ticket.id,
+        contact: {
+          id: contact.id,
+          name: contact.name,
+          number: contact.number,
+          isGroup: contact.isGroup
+        },
+        message: {
+          id: processedMessage.id,
+          body: messageData.body,
+          from: processedMessage.from,
+          to: processedMessage.to,
+          mediaType: messageData.mediaType,
+          mediaUrl: messageData.mediaUrl,
+          timestamp: processedMessage.timestamp
+        }
+      });
+    }
 
     await processVcardMessage(processedMessage);
 

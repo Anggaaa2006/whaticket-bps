@@ -1,0 +1,78 @@
+services:
+  mysql:
+    image: mariadb:10.6
+    container_name: whaticket-mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_bin
+    volumes:
+      - ./.docker/data/:/var/lib/mysql
+    environment:
+      - MYSQL_DATABASE=whaticket
+      - MYSQL_ROOT_PASSWORD=strongpassword
+      - TZ=Asia/Jakarta
+    restart: always
+    networks:
+      whaticket:
+        aliases:
+          - mysql
+          - mariadb
+          - db
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ./Dockerfile
+    container_name: whaticket-backend
+    env_file:
+      - ./backend/.env
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - PROXY_PORT=8080
+      - DB_DIALECT=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASS=strongpassword
+      - DB_NAME=whaticket
+      - JWT_SECRET=whaticket_bps_jwt_secret_2026
+      - JWT_REFRESH_SECRET=whaticket_bps_jwt_refresh_secret_2026
+      - BACKEND_URL=http://192.168.3.56:8080
+      - FRONTEND_URL=http://192.168.3.56:3000
+      - CHROME_BIN=/usr/bin/google-chrome-stable
+      - CHROME_ARGS=--no-sandbox --disable-setuid-sandbox
+      - WEBHOOK_URL=https://whatsapp-multi-agent-call-center-738001087811.asia-southeast1.run.app/webhook
+      - WEBHOOK_TOKEN=BtwPCEtdZ1Dx8KJtRDMYNLrzpizpeO4riewC5kFP85XaXFaNZu
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend/public/:/usr/src/app/public/
+      - ./backend/.wwebjs_auth/:/usr/src/app/.wwebjs_auth/
+      - ./backend/.zapo_auth/:/usr/src/app/.zapo_auth/
+    depends_on:
+      - mysql
+    restart: always
+    networks:
+      - whaticket
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ./Dockerfile
+    container_name: whaticket-frontend
+    env_file:
+      - ./frontend/.env
+    environment:
+      - URL_BACKEND=backend:8080
+      - REACT_APP_BACKEND_URL=http://192.168.3.56:8080
+      - VITE_BACKEND_URL=http://192.168.3.56:8080
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: always
+    networks:
+      - whaticket
+
+networks:
+  whaticket:
+    driver: bridge
