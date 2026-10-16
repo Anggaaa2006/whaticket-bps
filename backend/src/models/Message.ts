@@ -36,10 +36,18 @@ class Message extends Model<Message> {
 
   @Column(DataType.STRING)
   get mediaUrl(): string | null {
-    if (this.getDataValue("mediaUrl")) {
-      return `${process.env.BACKEND_URL}:${
-        process.env.PROXY_PORT
-      }/public/${this.getDataValue("mediaUrl")}`;
+    const raw = this.getDataValue("mediaUrl");
+    if (raw) {
+      let backend = (process.env.BACKEND_URL || "").replace(/\/$/, "");
+      if (backend.startsWith("https://")) {
+        backend = backend.replace(/:\d+$/, "");
+        return `${backend}/public/${raw}`;
+      }
+      const port = process.env.PROXY_PORT;
+      if (port && port !== "80" && port !== "443" && !backend.includes(`:${port}`)) {
+        return `${backend}:${port}/public/${raw}`;
+      }
+      return `${backend}/public/${raw}`;
     }
     return null;
   }

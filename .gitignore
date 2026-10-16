@@ -11,3 +11,4 @@ backup_whaticket.sql
 download_frontend.py
 sync_all_assets.py
 make_zip.ps1
+fix_socket_transport.py

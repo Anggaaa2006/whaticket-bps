@@ -18,7 +18,14 @@ const SendWhatsAppMessage = async ({
   quotedMsg
 }: Request): Promise<ProviderMessage> => {
   if (!ticket.whatsappId) {
-    throw new AppError("ERR_TICKET_NO_WHATSAPP");
+    const GetDefaultWhatsApp = (await import("../../helpers/GetDefaultWhatsApp")).default;
+    const defaultWhatsapp = await GetDefaultWhatsApp();
+    if (defaultWhatsapp) {
+      await ticket.update({ whatsappId: defaultWhatsapp.id });
+      ticket.whatsappId = defaultWhatsapp.id;
+    } else {
+      throw new AppError("ERR_TICKET_NO_WHATSAPP");
+    }
   }
 
   const chatId = `${ticket.contact.number}@${ticket.isGroup ? "g" : "c"}.us`;
